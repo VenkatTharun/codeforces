@@ -1,5 +1,3 @@
-package myDSTemplates;
-
 public class MyDSTemplates {
 
     public static void main(String args[]) {
@@ -34,15 +32,16 @@ public class MyDSTemplates {
         stLazy.printTree();
         System.out.println(stLazy.query(1, 0, arr.length-1, 2, 2)); */
 
-        /* AvlTree Test
+        /* //AvlTree Test
         AvlTree<Integer> tree = new AvlTree<>();
+        tree.insert(0);
         tree.insert(1);
         tree.insert(2);
         tree.insert(3);
         tree.insert(5);
         tree.insert(6);
 
-        System.out.println(tree.getLowerBoundIndex(5));
+        System.out.println(tree.getLowerBoundIndex(6));
         System.out.println(tree.contains(1));
         System.out.println(tree.contains(4));
         System.out.println(tree.getValueByIndex(3)); */
@@ -323,6 +322,7 @@ class AvlTree<T extends Comparable> {
         size = 0;
     }
 
+    // index of element equal to the data or first element greater than data
     public long getLowerBoundIndex(T data) {
         Node<T> currNode = root;
         long index = 0;
