@@ -1,3 +1,5 @@
+import java.util.Arrays;
+
 public class MyDSTemplates {
 
     public static void main(String args[]) {
@@ -46,6 +48,20 @@ public class MyDSTemplates {
         System.out.println(tree.contains(4));
         System.out.println(tree.getValueByIndex(3)); */
 
+        /* // Treap tests
+        Treap treap = new Treap();
+        treap.add(5);
+        treap.add(4);
+        treap.add(3);
+        treap.add(1);
+        treap.add(1);
+        treap.add(2);
+        treap.print();
+        System.out.println(treap.get(3));
+        treap.modify(4, 6);
+        System.out.println(treap.get(4));
+        treap.remove(5);
+        treap.print(); */
     }
 }
 
@@ -568,6 +584,208 @@ class AvlTree<T extends Comparable> {
     private long getHeightDiff(Node<T> root) {
         if (root == null) return 0;
         return getHeight(root.left) - getHeight(root.right);
+    }
+}
+
+class DSU {
+    int[] parent;
+    int[] size;
+
+    DSU(int n) {
+        this.parent = new int[n];
+        this.size = new int[n];
+        Arrays.fill(parent, -1);
+    }
+
+    public void makeSet(int v) {
+        parent[v] = v;
+        size[v] = 1;
+    }
+
+    public int findSet(int v) {
+        if (v == parent[v]) return v;
+        return parent[v] = findSet(parent[v]);
+    }
+
+    public void unionSets(int a, int b) {
+        a = findSet(a);
+        b = findSet(b);
+        if (a != b) {
+            if (size[a] < size[b]) {
+                int temp = a;
+                a = b;
+                b = temp;
+            }
+            parent[b] = a;
+            size[a] += size[b];
+        }
+    }
+}
+
+// Implicit treap with 1 index
+class Treap {
+    Node root;
+
+    static class Node {
+        int size, val;
+        Node left, right, parent;
+        double prior;
+
+        public Node(int val) {
+            this.val = val;
+            size = 1;
+            // randomized binary search tree guarantees O(log2 n) amortized complexity
+            prior = Math.random();
+        }
+    }
+
+    static class Pair {
+        Node left, right;
+
+        public Pair(Node l, Node r) {
+            left = l;
+            right = r;
+        }
+    }
+
+    public int size() {
+        return size(root);
+    }
+
+    public Node add(int index, int val) {
+        Pair n = split(root, index - 1);
+        Node newNode = new Node(val);
+        root = merge(n.left, merge(newNode, n.right));
+        return newNode;
+    }
+
+    public Node add(int val) {
+        return add(size() + 1, val);
+    }
+
+    public Node add(Node val) {
+        return add(size() + 1, val);
+    }
+
+    public Node remove(int k) {
+        Pair res1 = split(root, k - 1);
+        Pair res2 = split(res1.right, 1);
+        root = merge(res1.left, res2.right);
+        return res2.left;
+    }
+
+    public int indexOf(Node cur) {
+        Node fa = cur.parent;
+        int ret = size(cur.left) + 1;
+        while (fa != null) {
+            if (cur != fa.left) ret += size(fa.left) + 1;
+            cur = fa;
+            fa = cur.parent;
+        }
+        return ret;
+    }
+
+    public int get(int k) {
+        if (k > size(root) || k <= 0) throw new IllegalArgumentException();
+        return get(root, k);
+    }
+
+    public void modify(int key, int val) {
+        modify(root, key, val);
+    }
+
+    public void clear() {
+        root = null;
+    }
+
+    public void print() {
+        print(root);
+        if (root != null) System.out.println();
+    }
+
+    private int size(Node t) {
+        if (t == null) return 0;
+        else return t.size;
+    }
+
+    private void update(Node t) {
+        if (t != null) {
+            t.size = size(t.left) + 1 + size(t.right);
+            t.parent = null;
+        }
+    }
+
+    private void setParent(Node child, Node parent) {
+        if (child != null) child.parent = parent;
+    }
+
+    int get(Node n, int k) {
+        if (n == null) return -1;
+        int key = size(n.left) + 1;
+        if (key > k) return get(n.left, k);
+        else if (key < k) return get(n.right, k - key);
+        return n.val;
+    }
+
+    private Node add(int index, Node val) {
+        Pair n = split(root, index - 1);
+        root = merge(n.left, merge(val, n.right));
+        return val;
+    }
+
+    private void modify(Node n, int k, int val) {
+        int key = size(n.left) + 1;
+        if (key == k) n.val = val;
+        else if (k < key) modify(n.left, k, val);
+        else modify(n.right, k - key, val);
+        update(n);
+    }
+
+    private Pair split(Node n, int k) {
+        Pair res = new Pair(null, null);
+        if (n == null) return res;
+        int key = size(n.left) + 1;
+        if (key > k) {
+            res = split(n.left, k);
+            n.left = res.right;
+            setParent(res.right, n);
+            res.right = n;
+        } else {
+            res = split(n.right, k - key);
+            n.right = res.left;
+            setParent(res.left, n);
+            res.left = n;
+        }
+        //update(n);
+        update(res.left);
+        update(res.right);
+        return res;
+    }
+
+    private Node merge(Node t1, Node t2) {
+        if (t1 == null) return t2;
+        else if (t2 == null) return t1;
+        Node newRoot = null;
+        if (t1.prior > t2.prior) {
+            Node temp = merge(t1.right, t2);
+            t1.right = temp;
+            setParent(temp, t1);
+            newRoot = t1;
+        } else {
+            Node temp = merge(t1, t2.left);
+            t2.left = temp;
+            setParent(temp, t2);
+            newRoot = t2;
+        }
+        update(newRoot);
+        return newRoot;
+    }
+
+    private void print(Node t) {
+        if (t == null) return;
+        print(t.left);
+        System.out.print(t.val + " ");
+        print(t.right);
     }
 }
 
