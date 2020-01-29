@@ -48,7 +48,7 @@ public class MyDSTemplates {
         System.out.println(tree.contains(4));
         System.out.println(tree.getValueByIndex(3)); */
 
-        /* // Treap tests
+         // Treap tests
         Treap treap = new Treap();
         treap.add(5);
         treap.add(4);
@@ -61,7 +61,9 @@ public class MyDSTemplates {
         treap.modify(4, 6);
         System.out.println(treap.get(4));
         treap.remove(5);
-        treap.print(); */
+        treap.print();
+
+        System.out.println(treap.sum(5, 5));
     }
 }
 
@@ -622,17 +624,22 @@ class DSU {
     }
 }
 
-// Implicit treap with 1 index
+// Implicit treap with 1 index.
+// comment sum logic or modify with min or other things
+// modify the interval logic: https://cp-algorithms.com/data_structures/treap.html#toc-tgt-6
 class Treap {
     Node root;
 
     static class Node {
-        int size, val;
+        int size;
+        long val;
+        long sum;
         Node left, right, parent;
         double prior;
 
         public Node(int val) {
             this.val = val;
+            this.sum = 0;
             size = 1;
             // randomized binary search tree guarantees O(log2 n) amortized complexity
             prior = Math.random();
@@ -674,18 +681,7 @@ class Treap {
         return res2.left;
     }
 
-    public int indexOf(Node cur) {
-        Node fa = cur.parent;
-        int ret = size(cur.left) + 1;
-        while (fa != null) {
-            if (cur != fa.left) ret += size(fa.left) + 1;
-            cur = fa;
-            fa = cur.parent;
-        }
-        return ret;
-    }
-
-    public int get(int k) {
+    public long get(int k) {
         if (k > size(root) || k <= 0) throw new IllegalArgumentException();
         return get(root, k);
     }
@@ -703,14 +699,47 @@ class Treap {
         if (root != null) System.out.println();
     }
 
+    // 1 index
+    public long sum(int l, int r) {
+        return sum(root, l, r);
+    }
+
+   private long sum(Node curr, int l, int r) {
+       Pair pair1 = split(curr, l-1);
+       Pair pair2 = split(pair1.right, r-l+1);
+
+       long result = pair2.left.sum;
+       root = merge(merge(pair1.left, pair2.left), pair2.right);
+
+       return result;
+    }
+
+    // untested
+    public int indexOf(Node cur) {
+        Node fa = cur.parent;
+        int ret = size(cur.left) + 1;
+        while (fa != null) {
+            if (cur != fa.left) ret += size(fa.left) + 1;
+            cur = fa;
+            fa = cur.parent;
+        }
+        return ret;
+    }
+
     private int size(Node t) {
         if (t == null) return 0;
         else return t.size;
     }
 
+    private long sum(Node t) {
+        if (t == null) return 0;
+        else return t.sum;
+    }
+
     private void update(Node t) {
         if (t != null) {
             t.size = size(t.left) + 1 + size(t.right);
+            t.sum = sum(t.left) + t.val + sum(t.right);
             t.parent = null;
         }
     }
@@ -719,7 +748,7 @@ class Treap {
         if (child != null) child.parent = parent;
     }
 
-    int get(Node n, int k) {
+    long get(Node n, int k) {
         if (n == null) return -1;
         int key = size(n.left) + 1;
         if (key > k) return get(n.left, k);
