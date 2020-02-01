@@ -50,20 +50,41 @@ public class MyDSTemplates {
 
          // Treap tests
         Treap treap = new Treap();
-        treap.add(5);
-        treap.add(4);
-        treap.add(3);
-        treap.add(1);
-        treap.add(1);
-        treap.add(2);
+        treap.insertLast(5);
+        treap.insertLast(4);
+        treap.insertLast(3);
+        treap.insertLast(1);
+        treap.insertLast(1);
+        treap.insertLast(2);
+        treap.insertAt(3, 9);
         treap.print();
-        System.out.println(treap.get(3));
+        System.out.println(treap.isSorted());
+        System.out.println(treap.getByIndex(3));
         treap.modify(4, 6);
-        System.out.println(treap.get(4));
-        treap.remove(5);
+        System.out.println(treap.getByIndex(4));
+        treap.removeAt(5);
+        treap.print();
+        System.out.println(treap.sum(5, 5));
+
+        treap.clear();
+        treap.insert(5);
+        treap.insert(4);
+        treap.insert(6);
+        treap.insert(3);
+        treap.print();
+        System.out.println(treap.isSorted());
+        System.out.println(treap.getByIndex(4));
+        System.out.println(treap.sum(1,4));
+        treap.remove(4);
         treap.print();
 
-        System.out.println(treap.sum(5, 5));
+        System.out.println(treap.sum(1,3));
+        System.out.println(treap.contains(4) + " " + treap.contains(3));
+        Treap.Pair pair = treap.lowerBound(4);
+        System.out.println(pair.val + " " +  pair.index);
+
+        pair = treap.upperBound(3);
+        System.out.println(pair.val + " " +  pair.index);
     }
 }
 
@@ -629,6 +650,7 @@ class DSU {
 // modify the interval logic: https://cp-algorithms.com/data_structures/treap.html#toc-tgt-6
 class Treap {
     Node root;
+    boolean isSorted = true;
 
     static class Node {
         int size;
@@ -646,12 +668,22 @@ class Treap {
         }
     }
 
-    static class Pair {
+    static class NodePair {
         Node left, right;
 
-        public Pair(Node l, Node r) {
+        public NodePair(Node l, Node r) {
             left = l;
             right = r;
+        }
+    }
+
+    static class Pair {
+        long val;
+        int index;
+
+        public Pair(long val, int index) {
+            this.val = val;
+            this.index = index;
         }
     }
 
@@ -659,39 +691,76 @@ class Treap {
         return size(root);
     }
 
-    public Node add(int index, int val) {
-        Pair n = split(root, index - 1);
+    public boolean isSorted() {
+        return isSorted;
+    }
+
+    public Node insert(int val) {
+        NodePair n = splitByKey(root, val);
         Node newNode = new Node(val);
         root = merge(n.left, merge(newNode, n.right));
         return newNode;
     }
 
-    public Node add(int val) {
-        return add(size() + 1, val);
+    public void remove(int val) {
+        root = remove(root, val);
     }
 
-    public Node add(Node val) {
-        return add(size() + 1, val);
+    public Node insertAt(int index, int val) {
+        NodePair n = splitBySize(root, index - 1);
+        Node newNode = new Node(val);
+        root = merge(n.left, merge(newNode, n.right));
+
+        if (index > 0 && isSorted) {
+            if (getByIndex(root, index-1) >= get (root, index)) isSorted = false;
+        }
+        if (index < size()-1 && isSorted) {
+            if (getByIndex(root, index) >= get (root, index+1)) isSorted = false;
+        }
+        return newNode;
     }
 
-    public Node remove(int k) {
-        Pair res1 = split(root, k - 1);
-        Pair res2 = split(res1.right, 1);
+    public Node insertLast(int val) {
+        return insertAt(size() + 1, val);
+    }
+
+    public Node removeAt(int index) {
+        NodePair res1 = splitBySize(root, index - 1);
+        NodePair res2 = splitBySize(res1.right, 1);
         root = merge(res1.left, res2.right);
         return res2.left;
     }
 
-    public long get(int k) {
-        if (k > size(root) || k <= 0) throw new IllegalArgumentException();
-        return get(root, k);
+    public long getByIndex(int index) {
+        if (index > size(root) || index <= 0) throw new IllegalArgumentException();
+        return getByIndex(root, index);
     }
 
-    public void modify(int key, int val) {
-        modify(root, key, val);
+    public boolean contains(long val) {
+        if (get(root, val) != Long.MIN_VALUE) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public Pair lowerBound(long val) {
+        if (!isSorted) throw new IllegalStateException("lower bound called on unsorted treap");
+        return lowerBound(root, val, 1);
+    }
+
+    public Pair upperBound(long val) {
+        if (!isSorted) throw new IllegalStateException("lower bound called on unsorted treap");
+        return upperBound(root, val, 1);
+    }
+
+    public void modify(int index, long val) {
+        modify(root, index, val);
     }
 
     public void clear() {
         root = null;
+        isSorted = true;
     }
 
     public void print() {
@@ -705,13 +774,39 @@ class Treap {
     }
 
    private long sum(Node curr, int l, int r) {
-       Pair pair1 = split(curr, l-1);
-       Pair pair2 = split(pair1.right, r-l+1);
+       NodePair pair1 = splitBySize(curr, l-1);
+       NodePair pair2 = splitBySize(pair1.right, r-l+1);
 
        long result = pair2.left.sum;
        root = merge(merge(pair1.left, pair2.left), pair2.right);
 
        return result;
+    }
+
+
+    private Pair lowerBound(Node node, long key, int index) {
+        if (node == null) return new Pair(Long.MIN_VALUE, -1);
+        if (node.val == key) return new Pair(node.val, index + size(node.left));
+
+        if (node.val > key) {
+            Pair pair = lowerBound(node.left, key, index);
+            if (pair.index == -1)  pair = new Pair(node.val, index + size(node.left));
+            return pair;
+        }
+
+        return lowerBound(node.right, key, index + size(node.left) + 1);
+    }
+
+    private Pair upperBound(Node node, long key, int index) {
+        if (node == null) return new Pair(Long.MIN_VALUE, -1);
+
+        if (node.val > key) {
+            Pair pair = upperBound(node.left, key, index);
+            if (pair.index == -1)  pair = new Pair(node.val, index + size(node.left));
+            return pair;
+        }
+
+        return upperBound(node.right, key, index + size(node.left) + 1);
     }
 
     // untested
@@ -748,44 +843,82 @@ class Treap {
         if (child != null) child.parent = parent;
     }
 
-    long get(Node n, int k) {
-        if (n == null) return -1;
+    long getByIndex(Node n, int index) {
+        if (n == null) return Long.MIN_VALUE;
         int key = size(n.left) + 1;
-        if (key > k) return get(n.left, k);
-        else if (key < k) return get(n.right, k - key);
+        if (key > index) return getByIndex(n.left, index);
+        else if (key < index) return getByIndex(n.right, index - key);
         return n.val;
     }
 
-    private Node add(int index, Node val) {
-        Pair n = split(root, index - 1);
-        root = merge(n.left, merge(val, n.right));
-        return val;
+    long get(Node n, long key) {
+        if (n == null) return Long.MIN_VALUE;
+        if (n.val > key) return get(n.left, key);
+        else if (n.val < key) return get(n.right, key);
+        return n.val;
     }
 
-    private void modify(Node n, int k, int val) {
+    private void modify(Node n, int index, long val) {
         int key = size(n.left) + 1;
-        if (key == k) n.val = val;
-        else if (k < key) modify(n.left, k, val);
-        else modify(n.right, k - key, val);
+        if (key == index) n.val = val;
+        else if (index < key) modify(n.left, index, val);
+        else modify(n.right, index - key, val);
         update(n);
     }
 
-    private Pair split(Node n, int k) {
-        Pair res = new Pair(null, null);
+    private Node remove(Node node, int val) {
+        if (node == null) return null;
+
+        if (node.val == val) {
+            return merge(node.left, node.right);
+        }
+
+        if (node.val > val) node.left = remove(node.left, val);
+        else node.right = remove(node.right, val);
+
+        update(node);
+        return node;
+    }
+
+    // regular treap for insert by value
+    private NodePair splitByKey(Node n, int k) {
+        NodePair res = new NodePair(null, null);
         if (n == null) return res;
-        int key = size(n.left) + 1;
-        if (key > k) {
-            res = split(n.left, k);
+
+        if (n.val > k) {
+            res = splitByKey(n.left, k);
             n.left = res.right;
             setParent(res.right, n);
             res.right = n;
         } else {
-            res = split(n.right, k - key);
+            res = splitByKey(n.right, k);
             n.right = res.left;
             setParent(res.left, n);
             res.left = n;
         }
-        //update(n);
+
+        update(res.left);
+        update(res.right);
+        return res;
+    }
+
+    //implicit treap for insert at pos
+    private NodePair splitBySize(Node n, int k) {
+        NodePair res = new NodePair(null, null);
+        if (n == null) return res;
+        int key = size(n.left) + 1;
+        if (key > k) {
+            res = splitBySize(n.left, k);
+            n.left = res.right;
+            setParent(res.right, n);
+            res.right = n;
+        } else {
+            res = splitBySize(n.right, k - key);
+            n.right = res.left;
+            setParent(res.left, n);
+            res.left = n;
+        }
+
         update(res.left);
         update(res.right);
         return res;
